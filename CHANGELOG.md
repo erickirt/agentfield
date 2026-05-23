@@ -6,6 +6,40 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) 
 
 <!-- changelog:entries -->
 
+## [0.1.85-rc.6] - 2026-05-23
+
+
+### Chores
+
+- Chore(deps): bump the npm_and_yarn group across 2 directories with 1 update (#580)
+
+Bumps the npm_and_yarn group with 1 update in the /examples/benchmarks/100k-scale/mastra-bench directory: [qs](https://github.com/ljharb/qs).
+Bumps the npm_and_yarn group with 1 update in the /sdk/typescript directory: [qs](https://github.com/ljharb/qs).
+
+
+Updates `qs` from 6.15.0 to 6.15.2
+- [Changelog](https://github.com/ljharb/qs/blob/main/CHANGELOG.md)
+- [Commits](https://github.com/ljharb/qs/compare/v6.15.0...v6.15.2)
+
+Updates `qs` from 6.14.2 to 6.15.2
+- [Changelog](https://github.com/ljharb/qs/blob/main/CHANGELOG.md)
+- [Commits](https://github.com/ljharb/qs/compare/v6.15.0...v6.15.2)
+
+---
+updated-dependencies:
+- dependency-name: qs
+  dependency-version: 6.15.2
+  dependency-type: indirect
+  dependency-group: npm_and_yarn
+- dependency-name: qs
+  dependency-version: 6.15.2
+  dependency-type: indirect
+  dependency-group: npm_and_yarn
+...
+
+Signed-off-by: dependabot[bot] <support@github.com>
+Co-authored-by: dependabot[bot] <49699333+dependabot[bot]@users.noreply.github.com> (8e44254)
+
 ## [0.1.85-rc.5] - 2026-05-23
 
 
