@@ -534,6 +534,8 @@ class AgentAI:
         # deadlock that py-spy reveals as 'all worker threads idle'.
         # litellm forwards `timeout` to httpx as a request-level timeout.
         # Per-call `timeout` kwarg overrides the agent-wide async_config default.
+        if timeout is not None and timeout <= 0:
+            raise ValueError(f"timeout must be positive, got {timeout}")
         effective_timeout = (
             timeout
             if timeout is not None

@@ -199,7 +199,9 @@ async def generate_image_openrouter(
                     await asyncio.sleep(_NO_ENDPOINTS_INTER_SLEEPS[attempt])
         if response is None:
             # All in-loop attempts exhausted. If image_config was set, try once
-            # without it before giving up.
+            # without it before giving up. Falsy check (not `is not None`) is
+            # intentional: image_config={} produces an identical wire call
+            # whether stripped or not, so we skip the useless extra attempt.
             if completion_params.get("image_config"):
                 log_warn(
                     "OpenRouter returned 'No endpoints found' after retries; "

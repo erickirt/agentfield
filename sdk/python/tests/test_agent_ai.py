@@ -361,3 +361,14 @@ async def test_ai_per_call_timeout_applies_to_wait_for_safety_net(
     await ai.ai("hi", timeout=10.0)
 
     assert 20.0 in wait_for_timeouts
+
+
+@pytest.mark.asyncio
+async def test_ai_rejects_non_positive_timeout(monkeypatch, agent_with_ai):
+    ai, _stub, _captured = _setup_timeout_test(monkeypatch, agent_with_ai)
+
+    with pytest.raises(ValueError, match="timeout must be positive"):
+        await ai.ai("hi", timeout=0)
+
+    with pytest.raises(ValueError, match="timeout must be positive"):
+        await ai.ai("hi", timeout=-1.0)
