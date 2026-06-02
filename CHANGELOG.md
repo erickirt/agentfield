@@ -6,6 +6,67 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) 
 
 <!-- changelog:entries -->
 
+## [0.1.88-rc.1] - 2026-06-02
+
+
+### Chores
+
+- Chore(deps-dev): bump the npm_and_yarn group across 2 directories with 1 update (#609)
+
+* chore(deps-dev): bump the npm_and_yarn group across 2 directories with 1 update
+
+Bumps the npm_and_yarn group with 1 update in the /control-plane/web/client directory: [vitest](https://github.com/vitest-dev/vitest/tree/HEAD/packages/vitest).
+Bumps the npm_and_yarn group with 1 update in the /sdk/typescript directory: [vitest](https://github.com/vitest-dev/vitest/tree/HEAD/packages/vitest).
+
+
+Updates `vitest` from 3.2.4 to 4.1.8
+- [Release notes](https://github.com/vitest-dev/vitest/releases)
+- [Changelog](https://github.com/vitest-dev/vitest/blob/main/docs/releases.md)
+- [Commits](https://github.com/vitest-dev/vitest/commits/v4.1.8/packages/vitest)
+
+Updates `vitest` from 3.2.4 to 4.1.8
+- [Release notes](https://github.com/vitest-dev/vitest/releases)
+- [Changelog](https://github.com/vitest-dev/vitest/blob/main/docs/releases.md)
+- [Commits](https://github.com/vitest-dev/vitest/commits/v4.1.8/packages/vitest)
+
+Updates `vitest` from 3.2.4 to 4.1.8
+- [Release notes](https://github.com/vitest-dev/vitest/releases)
+- [Changelog](https://github.com/vitest-dev/vitest/blob/main/docs/releases.md)
+- [Commits](https://github.com/vitest-dev/vitest/commits/v4.1.8/packages/vitest)
+
+Updates `vitest` from 3.2.4 to 4.1.8
+- [Release notes](https://github.com/vitest-dev/vitest/releases)
+- [Changelog](https://github.com/vitest-dev/vitest/blob/main/docs/releases.md)
+- [Commits](https://github.com/vitest-dev/vitest/commits/v4.1.8/packages/vitest)
+
+---
+updated-dependencies:
+- dependency-name: vitest
+  dependency-version: 4.1.8
+  dependency-type: direct:development
+- dependency-name: vitest
+  dependency-version: 4.1.8
+  dependency-type: direct:development
+- dependency-name: vitest
+  dependency-version: 4.1.8
+  dependency-type: direct:development
+- dependency-name: vitest
+  dependency-version: 4.1.8
+  dependency-type: direct:development
+...
+
+Signed-off-by: dependabot[bot] <support@github.com>
+
+* fix: make vitest 4 dependency update pass
+
+* chore(coverage): reset vitest 4 coverage baseline
+
+---------
+
+Signed-off-by: dependabot[bot] <support@github.com>
+Co-authored-by: dependabot[bot] <49699333+dependabot[bot]@users.noreply.github.com>
+Co-authored-by: Santosh <santosh@agentfield.ai> (2221a08)
+
 ## [0.1.87] - 2026-06-01
 
 ## [0.1.87-rc.3] - 2026-06-01
