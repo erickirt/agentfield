@@ -6,6 +6,32 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) 
 
 <!-- changelog:entries -->
 
+## [0.1.89-rc.3] - 2026-06-04
+
+
+### Chores
+
+- Chore(deps): bump starlette (#616)
+
+Bumps the uv group with 1 update in the /sdk/python directory: [starlette](https://github.com/Kludex/starlette).
+
+
+Updates `starlette` from 1.0.0 to 1.0.1
+- [Release notes](https://github.com/Kludex/starlette/releases)
+- [Changelog](https://github.com/Kludex/starlette/blob/main/docs/release-notes.md)
+- [Commits](https://github.com/Kludex/starlette/compare/1.0.0...1.0.1)
+
+---
+updated-dependencies:
+- dependency-name: starlette
+  dependency-version: 1.0.1
+  dependency-type: indirect
+  dependency-group: uv
+...
+
+Signed-off-by: dependabot[bot] <support@github.com>
+Co-authored-by: dependabot[bot] <49699333+dependabot[bot]@users.noreply.github.com> (e8dd044)
+
 ## [0.1.89-rc.2] - 2026-06-04
 
 
