@@ -6,6 +6,173 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) 
 
 <!-- changelog:entries -->
 
+## [0.1.92-rc.2] - 2026-06-10
+
+
+### Fixed
+
+- Fix(release): skip prerelease counters already taken on origin (#649)
+
+The Release workflow auto-bumps a staging rc on every push to main by
+calling `scripts/bump_version.py --channel prerelease ...`. The bump
+logic computed the next counter purely from VERSION, with no awareness
+of which tags already existed on the remote. When VERSION lagged behind
+the latest prerelease tag (e.g. VERSION=0.1.91 while v0.1.92-rc.1 was
+already pushed by an earlier run), the script kept emitting the same
+0.1.92-rc.1 and `git tag -a` failed with "tag already exists", killing
+every subsequent run.
+
+This change:
+
+- Queries origin via `git ls-remote --tags` and skips counters that
+  already exist there, so the script returns the first free counter
+  (0.1.92-rc.2 in the failure case above).
+- Falls back to the legacy behaviour on any git failure (no network,
+  missing binary, timeout) with a warning to stderr, so the script
+  remains usable offline / in tests.
+- Adds a `--skip-tag-check` opt-out for tests and offline use.
+- Adds unit tests covering both the regression and the existing paths
+  (stable bumps, same-label increments, label filtering, lookup base
+  selection).
+
+No release workflow changes are required; the existing call site
+already passes the same flags. (88cb1af)
+
+- Fix(tests): default serverless test bind host to 127.0.0.1 (#647)
+
+Aligns test_serverless_agents.py with the rest of the functional suite, which
+already defaults TEST_AGENT_BIND_HOST to 127.0.0.1 (see tests/functional/
+conftest.py and test_quick_start.py). Docker Compose overrides set the env
+variable explicitly when 0.0.0.0 is required. Closes CodeQL alert #35
+(py/bind-socket-all-network-interfaces). (c93b884)
+
+- Fix(deps): force @ai-sdk/provider-utils >3.0.97 in mastra-bench (#646)
+
+Adds npm "overrides" entries to upgrade the top-level @ai-sdk/provider-utils
+and the @ai-sdk/provider-utils-v5 alias used by @mastra/core to 4.0.27,
+removing the vulnerable 2.2.8 and 3.0.20 copies from the lockfile.
+Closes Dependabot alert #191 (CVE-2026-8769, GHSA-866g-f22w-33x8). (f5a341b)
+
+- Fix(deps): force postcss >=8.5.10 to resolve XSS advisory (#645)
+
+Adds npm "overrides" entry pinning all transitive copies of postcss to the
+direct dependency version (8.5.15), removing the nested 8.4.31 bundled inside
+Next.js. Closes Dependabot alert #136 (GHSA for PostCSS \</style\> XSS). (69f086e)
+
+
+
+### Other
+
+- Generic strong-type the consumer-facing API in Python SDK (#640)
+
+* issue/03-router-typing: define RouteRegistrar interface and use gin.IRouter for RegisterRoutes
+
+Introduce a RouteRegistrar interface in the handlers package that all
+handler types implement, and change their RegisterRoutes parameter from
+the concrete *gin.RouterGroup to the gin.IRouter interface. This enables
+polymorphic route composition and allows testing with lightweight router
+mocks.
+
+Affected handler types:
+- ConfigStorageHandlers
+- DIDHandlers
+- IdentityHandlers (ui)
+- TagApprovalHandlers (admin)
+- AccessPolicyHandlers (admin)
+- ConnectorHandlers
+
+* issue/agent-methods-typing: unwrap tracked wrapper in app.call() to preserve original function signature
+
+* issue/core-decorators-typing: add overloads, ParamSpec, and TypeVar annotations to core decorators
+
+* issue/537b5155-04-testing-typing: add mypy configuration and fix type annotations in test files
+
+* issue/537b5155-04-testing-typing: add generic TypeVar R to simulate_trigger and simulate_schedule
+
+* issue/agent-methods-typing: preserve type signatures on Agent.reasoner(), skill(), on_change() and module-level decorators
+
+* fixup: correct indentation of nested decorator functions inside reasoner, on_event, on_schedule
+
+* issue/537b5155-05-typing-verification: fix mypy errors in decorators and router
+
+- Add missing TypeVar T to decorators.py (was undefined but used in overloads)
+- Add type: ignore[attr-defined] for dynamically-set attributes on _Wrapped wrappers
+- Fix on_change inner decorator type signature (Callable[P, T] -> Callable[P, Awaitable[T]])
+- Fix legacy_reasoner return type compatibility
+- Add type: ignore[attr-defined] for router.py wrapper attributes
+- Verify mypy reveals correct types: simulate_schedule(str), simulate_trigger(str)
+
+* chore: finalize repo for handoff
+
+- Remove artifact directories (.artifacts/, .worktrees/)
+- Remove cache directories (.pytest_cache/, .mypy_cache/)
+- Deduplicate .env entry in .gitignore
+
+* fix(sdk-python): resolve ruff failures in new typing tests
+
+Remove unused imports (inspect, cast), drop the shadowed local re-import
+of _execute_with_tracking, and apply ruff format to the touched test
+files so 'ruff check .' passes again.
+
+Co-Authored-By: Claude Fable 5 <noreply@anthropic.com>
+
+* fix(sdk-python): infer awaited type for async reasoners in simulate_trigger
+
+simulate_trigger/simulate_schedule await coroutines transparently, so a
+single Callable[..., R] -> R signature bound R to the coroutine for
+async handlers while the function actually returns the awaited value.
+Add an Awaitable[R] overload ahead of the plain R one so both sync and
+async reasoners reveal the awaited type.
+
+Also move the TypeVar below the imports (E402) and make the mypy reveal
+fixtures runtime-importable via typing_extensions.reveal_type (F821),
+extending them to cover the async case.
+
+Co-Authored-By: Claude Fable 5 <noreply@anthropic.com>
+
+* fix(sdk-python): suppress mypy errors from ParamSpec on _execute_with_tracking
+
+The body intentionally rewrites args (Pydantic conversion) and injects
+kwargs (execution_context, trigger) beyond what the caller passed, which
+mypy rejects against P.args/P.kwargs. Keep the ParamSpec signature for
+caller-side inference and ignore the three body mutation sites; also
+apply ruff format to the new long annotations.
+
+Co-Authored-By: Claude Fable 5 <noreply@anthropic.com>
+
+* Fix Python SDK lint failures in strong typing PR
+
+---------
+
+Co-authored-by: SWE-AF <eng@agentfield.ai>
+Co-authored-by: Claude Fable 5 <noreply@anthropic.com>
+Co-authored-by: Santosh <santosh@agentfield.ai> (9108f75)
+
+- Add OpenRouter attribution defaults
+
+Add OpenRouter attribution request metadata defaults across the SDKs and harness paths without changing provider credentials or AgentField control-plane auth. (9b59ecd)
+
+- Revert PR #641 over-merge
+
+Reverts the accidental over-merge from PR #641, including the generated release bump that followed it. (546aacf)
+
+
+
+### Testing
+
+- Test(web-ui): wait for empty events state in triggers test (#648)
+
+Fixes #644
+
+The "No events received yet..." copy in TriggerSheet only renders after
+the async refreshEvents() fetch resolves and loadingEvents flips back
+to false. The test used a synchronous getByText, which raced the fetch
+under CI load and intermittently failed with TestingLibraryElementError.
+
+Switch to findByText so the assertion waits for the loading state to
+clear, matching the pattern already used elsewhere in the file for
+async-mounted UI. (074c65e)
+
 ## [0.1.91] - 2026-06-09
 
 ## [0.1.91-rc.3] - 2026-06-09
