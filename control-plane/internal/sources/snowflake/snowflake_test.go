@@ -44,11 +44,11 @@ func TestValidateEventTableConfig(t *testing.T) {
 	}
 
 	for _, raw := range []string{
-		`{"account_url":"https://acct","database":"DB","schema":"S","table":"bad-name"}`,
-		`{"account_url":"https://acct","mode":"unknown"}`,
-		`{"account_url":"https://acct","database":"DB","schema":"S","table":"T","interval_seconds":1}`,
-		`{"account_url":"https://acct","mode":"custom_query_poll","sql":"DELETE FROM T"}`,
-		`{"account_url":"https://acct","mode":"custom_query_poll","sql":"SELECT 1; SELECT 2"}`,
+		`{"account_url":"https://acct.snowflakecomputing.com","database":"DB","schema":"S","table":"bad-name"}`,
+		`{"account_url":"https://acct.snowflakecomputing.com","mode":"unknown"}`,
+		`{"account_url":"https://acct.snowflakecomputing.com","database":"DB","schema":"S","table":"T","interval_seconds":1}`,
+		`{"account_url":"https://acct.snowflakecomputing.com","mode":"custom_query_poll","sql":"DELETE FROM T"}`,
+		`{"account_url":"https://acct.snowflakecomputing.com","mode":"custom_query_poll","sql":"SELECT 1; SELECT 2"}`,
 	} {
 		if err := (&source{}).Validate([]byte(raw)); err == nil {
 			t.Fatalf("Validate(%s) expected error", raw)
@@ -60,11 +60,11 @@ func TestValidateRejectsMalformedConfigAndBoundaries(t *testing.T) {
 	cases := []string{
 		`{`,
 		`{"account_url":"acct","database":"DB","schema":"S","table":"T"}`,
-		`{"account_url":"https://acct","database":"DB","schema":"S","table":"T","max_batch_size":-1}`,
-		`{"account_url":"https://acct","database":"DB","schema":"S","table":"T","max_batch_size":501}`,
-		`{"account_url":"https://acct","database":"DB","schema":"S","table":"T","timeout_seconds":-1}`,
-		`{"account_url":"https://acct","database":"DB","schema":"S","table":"T","timeout_seconds":61}`,
-		`{"account_url":"https://acct","mode":"custom_query_poll","sql":""}`,
+		`{"account_url":"https://acct.snowflakecomputing.com","database":"DB","schema":"S","table":"T","max_batch_size":-1}`,
+		`{"account_url":"https://acct.snowflakecomputing.com","database":"DB","schema":"S","table":"T","max_batch_size":501}`,
+		`{"account_url":"https://acct.snowflakecomputing.com","database":"DB","schema":"S","table":"T","timeout_seconds":-1}`,
+		`{"account_url":"https://acct.snowflakecomputing.com","database":"DB","schema":"S","table":"T","timeout_seconds":61}`,
+		`{"account_url":"https://acct.snowflakecomputing.com","mode":"custom_query_poll","sql":""}`,
 	}
 	for _, raw := range cases {
 		if err := (&source{}).Validate([]byte(raw)); err == nil {

@@ -377,7 +377,8 @@ func (c *sqlAPIClient) Execute(ctx context.Context, cfg config, token, statement
 		httpClient = http.DefaultClient
 	}
 
-	// codeql[go/request-forgery]: account_url is parsed into a Snowflake-only HTTPS endpoint with no path, query, user info, or port before this request is built.
+	// account_url is parsed into a Snowflake-only HTTPS endpoint with no path, query, user info, or port before this request is built.
+	// codeql[go/request-forgery]
 	resp, err := httpClient.Do(req)
 	if err != nil {
 		return out, err
@@ -435,7 +436,8 @@ func (c *sqlAPIClient) pollStatement(ctx context.Context, cfg config, token stri
 		req.Header.Set("X-Snowflake-Authorization-Token-Type", "PROGRAMMATIC_ACCESS_TOKEN")
 		req.Header.Set("Accept", "application/json")
 
-		// codeql[go/request-forgery]: statementURL is built from a Snowflake-only HTTPS endpoint and a relative /api/v2/statements path.
+		// statementURL is built from a Snowflake-only HTTPS endpoint and a relative /api/v2/statements path.
+		// codeql[go/request-forgery]
 		resp, err := httpClient.Do(req)
 		if err != nil {
 			return out, err
