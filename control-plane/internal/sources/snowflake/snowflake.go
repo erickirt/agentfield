@@ -399,6 +399,9 @@ func (c *sqlAPIClient) Execute(ctx context.Context, cfg config, token, statement
 
 	httpClient := c.httpClientFor(account)
 
+	// Requests are built against the constant Snowflake SQL API host, then the
+	// transport rewrites to a host accepted by validateAccountURL.
+	// lgtm[go/request-forgery]
 	resp, err := httpClient.Do(req)
 	if err != nil {
 		return out, err
@@ -453,6 +456,9 @@ func (c *sqlAPIClient) pollStatement(ctx context.Context, cfg config, token stri
 		req.Header.Set("X-Snowflake-Authorization-Token-Type", "PROGRAMMATIC_ACCESS_TOKEN")
 		req.Header.Set("Accept", "application/json")
 
+		// Requests are built against the constant Snowflake SQL API host, then the
+		// transport rewrites to a host accepted by validateAccountURL.
+		// lgtm[go/request-forgery]
 		resp, err := httpClient.Do(req)
 		if err != nil {
 			return out, err
