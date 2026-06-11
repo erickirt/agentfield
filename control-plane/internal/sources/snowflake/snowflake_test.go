@@ -3,6 +3,7 @@ package snowflake
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -51,6 +52,58 @@ func TestValidateEventTableConfig(t *testing.T) {
 		if err := (&source{}).Validate([]byte(raw)); err == nil {
 			t.Fatalf("Validate(%s) expected error", raw)
 		}
+	}
+}
+
+func TestValidateRejectsMalformedConfigAndBoundaries(t *testing.T) {
+	cases := []string{
+		`{`,
+		`{"account_url":"acct","database":"DB","schema":"S","table":"T"}`,
+		`{"account_url":"https://acct","database":"DB","schema":"S","table":"T","max_batch_size":-1}`,
+		`{"account_url":"https://acct","database":"DB","schema":"S","table":"T","max_batch_size":501}`,
+		`{"account_url":"https://acct","database":"DB","schema":"S","table":"T","timeout_seconds":-1}`,
+		`{"account_url":"https://acct","database":"DB","schema":"S","table":"T","timeout_seconds":61}`,
+		`{"account_url":"https://acct","mode":"custom_query_poll","sql":""}`,
+	}
+	for _, raw := range cases {
+		if err := (&source{}).Validate([]byte(raw)); err == nil {
+			t.Fatalf("Validate(%s) expected error", raw)
+		}
+	}
+}
+
+func TestValidateCustomQueryAllowsReadOnlySQL(t *testing.T) {
+	for _, sql := range []string{"SELECT * FROM EVENTS", "WITH recent AS (SELECT 1) SELECT * FROM recent"} {
+		raw := `{"account_url":"https://acct","mode":"custom_query_poll","sql":` + strconvQuote(sql) + `}`
+		if err := (&source{}).Validate([]byte(raw)); err != nil {
+			t.Fatalf("Validate(%s) = %v", sql, err)
+		}
+	}
+}
+
+func TestParseConfigTrimsAndDefaults(t *testing.T) {
+	cfg, err := parseConfig([]byte(`{
+		"mode":" custom_query_poll ",
+		"account_url":" https://acct.snowflakecomputing.com/ ",
+		"database":" DB ",
+		"schema":" S ",
+		"table":" T ",
+		"event_id_column":" ID ",
+		"event_type_column":" TYPE ",
+		"payload_column":" BODY ",
+		"watermark_column":" CREATED_AT "
+	}`))
+	if err != nil {
+		t.Fatalf("parseConfig: %v", err)
+	}
+	if cfg.AccountURL != "https://acct.snowflakecomputing.com" {
+		t.Fatalf("AccountURL = %q", cfg.AccountURL)
+	}
+	if cfg.Mode != modeCustomQueryPoll || cfg.Database != "DB" || cfg.EventIDColumn != "ID" {
+		t.Fatalf("config was not normalized: %+v", cfg)
+	}
+	if cfg.IntervalSeconds != defaultIntervalSeconds || cfg.MaxBatchSize != defaultMaxBatchSize || cfg.TimeoutSeconds != 20 {
+		t.Fatalf("defaults not applied: %+v", cfg)
 	}
 }
 
@@ -155,6 +208,33 @@ func TestBuildPollStatementUsesTimestampWatermark(t *testing.T) {
 	}
 }
 
+func TestBuildPollStatementCustomQueryAndEscapedWatermark(t *testing.T) {
+	custom := buildPollStatement(config{
+		Mode:         modeCustomQueryPoll,
+		SQL:          " SELECT * FROM EVENTS ",
+		MaxBatchSize: 25,
+	}, "")
+	if custom != "SELECT * FROM (SELECT * FROM EVENTS) LIMIT 25" {
+		t.Fatalf("custom statement = %s", custom)
+	}
+
+	cfg := config{
+		Mode:            modeEventTablePoll,
+		Database:        "DB",
+		Schema:          "S",
+		Table:           "T",
+		EventIDColumn:   "EVENT_ID",
+		EventTypeColumn: "EVENT_TYPE",
+		PayloadColumn:   "PAYLOAD",
+		WatermarkColumn: "OCCURRED_AT",
+		MaxBatchSize:    5,
+	}
+	stmt := buildPollStatement(cfg, "2026-06-11T10:00:00'Z")
+	if !strings.Contains(stmt, "2026-06-11T10:00:00''Z") {
+		t.Fatalf("statement did not escape watermark: %s", stmt)
+	}
+}
+
 func TestSQLAPIClientPollsAcceptedStatement(t *testing.T) {
 	var postSeen bool
 	var getSeen bool
@@ -197,6 +277,51 @@ func TestSQLAPIClientPollsAcceptedStatement(t *testing.T) {
 	}
 }
 
+func TestSQLAPIClientExecuteErrors(t *testing.T) {
+	tests := []struct {
+		name    string
+		status  int
+		body    string
+		wantErr string
+	}{
+		{name: "http status", status: http.StatusBadRequest, body: `bad request`, wantErr: "SQL API status 400"},
+		{name: "invalid json", status: http.StatusOK, body: `{`, wantErr: "decode SQL API response"},
+		{name: "api code", status: http.StatusOK, body: `{"code":"123","message":"boom"}`, wantErr: "SQL API code 123"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+				w.WriteHeader(tt.status)
+				_, _ = w.Write([]byte(tt.body))
+			}))
+			defer server.Close()
+
+			_, err := (&sqlAPIClient{httpClient: server.Client()}).Execute(context.Background(), config{
+				AccountURL: server.URL, TimeoutSeconds: 1,
+			}, "pat", "SELECT 1")
+			if err == nil || !strings.Contains(err.Error(), tt.wantErr) {
+				t.Fatalf("Execute error = %v, want %q", err, tt.wantErr)
+			}
+		})
+	}
+}
+
+func TestSQLAPIClientPollStatementErrors(t *testing.T) {
+	client := &sqlAPIClient{}
+	_, err := client.pollStatement(context.Background(), config{TimeoutSeconds: 1}, "pat", statementResponse{})
+	if err == nil || !strings.Contains(err.Error(), "missing statementHandle") {
+		t.Fatalf("missing handle error = %v", err)
+	}
+
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+	_, err = client.pollStatement(ctx, config{AccountURL: "https://acct", TimeoutSeconds: 1}, "pat", statementResponse{StatementHandle: "stmt"})
+	if !errors.Is(err, context.Canceled) {
+		t.Fatalf("pollStatement canceled error = %v", err)
+	}
+}
+
 func TestResultToEventsRequiresStandardColumns(t *testing.T) {
 	_, _, err := resultToEvents(config{}, statementResponse{
 		ResultSetMeta: resultSetMetadata{RowType: []columnMeta{{Name: "EVENT_ID"}}},
@@ -205,4 +330,41 @@ func TestResultToEventsRequiresStandardColumns(t *testing.T) {
 	if err == nil || !strings.Contains(err.Error(), "missing EVENT_TYPE") {
 		t.Fatalf("expected missing column error, got %v", err)
 	}
+}
+
+func TestResultToEventsNormalizesValueTypes(t *testing.T) {
+	res := statementResponse{
+		StatementHandle: "query-1",
+		ResultSetMeta: resultSetMetadata{RowType: []columnMeta{
+			{Name: "event_id"},
+			{Name: "event_type"},
+			{Name: "payload"},
+			{Name: "occurred_at"},
+		}},
+		Data: [][]any{
+			{json.Number("42"), "snowflake.number", "not-json", nil},
+			{map[string]string{"id": "nested"}, "snowflake.object", map[string]any{"ok": true}, "2026-06-11T18:00:00Z"},
+		},
+	}
+	events, watermark, err := resultToEvents(config{AccountURL: "https://acct", Database: "DB", Schema: "S", Table: "T"}, res)
+	if err != nil {
+		t.Fatalf("resultToEvents: %v", err)
+	}
+	if len(events) != 2 {
+		t.Fatalf("events = %d, want 2", len(events))
+	}
+	if events[0].IdempotencyKey != "42" {
+		t.Fatalf("number id was not stringified: %+v", events[0])
+	}
+	if events[1].IdempotencyKey != `{"id":"nested"}` {
+		t.Fatalf("object id was not JSON stringified: %+v", events[1])
+	}
+	if watermark != "2026-06-11T18:00:00Z" {
+		t.Fatalf("watermark = %q", watermark)
+	}
+}
+
+func strconvQuote(v string) string {
+	b, _ := json.Marshal(v)
+	return string(b)
 }
