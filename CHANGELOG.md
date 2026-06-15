@@ -6,6 +6,36 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) 
 
 <!-- changelog:entries -->
 
+## [0.1.92-rc.12] - 2026-06-15
+
+
+### Chores
+
+- Chore(deps): bump the uv group across 1 directory with 4 updates (#671)
+
+---
+updated-dependencies:
+- dependency-name: aiohttp
+  dependency-version: 3.14.1
+  dependency-type: direct:production
+  dependency-group: uv
+- dependency-name: cryptography
+  dependency-version: 48.0.1
+  dependency-type: direct:production
+  dependency-group: uv
+- dependency-name: python-multipart
+  dependency-version: 0.0.31
+  dependency-type: indirect
+  dependency-group: uv
+- dependency-name: starlette
+  dependency-version: 1.3.1
+  dependency-type: indirect
+  dependency-group: uv
+...
+
+Signed-off-by: dependabot[bot] <support@github.com>
+Co-authored-by: dependabot[bot] <49699333+dependabot[bot]@users.noreply.github.com> (af60fca)
+
 ## [0.1.92-rc.11] - 2026-06-15
 
 
