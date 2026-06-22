@@ -6,6 +6,40 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) 
 
 <!-- changelog:entries -->
 
+## [0.1.92-rc.19] - 2026-06-22
+
+
+### Chores
+
+- Chore(deps): bump the uv group across 1 directory with 2 updates (#678)
+
+Bumps the uv group with 2 updates in the /sdk/python directory: [msgpack](https://github.com/msgpack/msgpack-python) and [pydantic-settings](https://github.com/pydantic/pydantic-settings).
+
+
+Updates `msgpack` from 1.1.2 to 1.2.1
+- [Release notes](https://github.com/msgpack/msgpack-python/releases)
+- [Changelog](https://github.com/msgpack/msgpack-python/blob/main/CHANGELOG.md)
+- [Commits](https://github.com/msgpack/msgpack-python/compare/v1.1.2...v1.2.1)
+
+Updates `pydantic-settings` from 2.13.1 to 2.14.2
+- [Release notes](https://github.com/pydantic/pydantic-settings/releases)
+- [Commits](https://github.com/pydantic/pydantic-settings/compare/v2.13.1...v2.14.2)
+
+---
+updated-dependencies:
+- dependency-name: msgpack
+  dependency-version: 1.2.1
+  dependency-type: indirect
+  dependency-group: uv
+- dependency-name: pydantic-settings
+  dependency-version: 2.14.2
+  dependency-type: indirect
+  dependency-group: uv
+...
+
+Signed-off-by: dependabot[bot] <support@github.com>
+Co-authored-by: dependabot[bot] <49699333+dependabot[bot]@users.noreply.github.com> (fbc2fc2)
+
 ## [0.1.92-rc.18] - 2026-06-21
 
 
