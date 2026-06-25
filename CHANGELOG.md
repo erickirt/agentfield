@@ -6,6 +6,26 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) 
 
 <!-- changelog:entries -->
 
+## [0.1.94-rc.3] - 2026-06-25
+
+
+### Added
+
+- Feat(sdk/python): add Ed25519 JWS sign/verify for payload authenticity (#690)
+
+Adds crypto.sign/verify and generate_ed25519_keypair — compact JWS over an
+Ed25519 key, wire-compatible with the TS SDK's jose CompactSign. Encryption
+(JWE) proves confidentiality only; signing lets a recipient verify a payload's
+ORIGIN. Used by the discuss/aggregator split so the aggregator accepts only
+hax-sdk-signed scopes (sign-then-encrypt), closing a cross-tenant forgery gap.
+
+Implemented directly over `cryptography` Ed25519 rather than joserfc (which
+rejects alg=EdDSA per RFC 9864); alg is pinned to EdDSA so a forged header
+cannot downgrade to none. Interop verified both directions (jose <-> this) plus
+negatives (wrong key, tampered, alg=none/HS256, malformed). 21 crypto tests, ruff clean.
+
+Co-authored-by: Claude Opus 4.8 (1M context) <noreply@anthropic.com> (2243032)
+
 ## [0.1.94-rc.2] - 2026-06-24
 
 
