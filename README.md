@@ -24,7 +24,7 @@
 </a>
 </div>
 
-AgentField is an open-source control plane that lets you build AI agents callable by any service in your stack - frontends, backends, other agents, cron jobs - just like any other API. You write agent logic in Python, Go, or TypeScript. AgentField turns it into production infrastructure: routing, coordination, memory, async execution, and observability. Every function becomes a REST endpoint, and the control plane handles fan-out, queues, retries, memory, and observability from one agent on a laptop to ten thousand in a single workflow.
+AgentField is an open-source control plane that lets you build AI agents callable by any service in your stack - frontends, backends, other agents, cron jobs - just like any other API. You write agent logic in Python, Go, or TypeScript. AgentField turns it into production infrastructure: routing, coordination, memory, async execution, and observability. Every function becomes a REST endpoint, and the same code scales from one agent on your laptop to ten thousand in a single workflow: the control plane handles the fan-out, the queues, and the retries.
 
 <div align="center">
 
@@ -53,7 +53,7 @@ You get a Docker Compose stack wired up end-to-end — the agent, the control pl
 
 ## The DX you get
 
-*Best in class Python (or Go / TypeScript) DX. With least intrusive abstraction. No DSL, no YAML, no graph wiring.*
+*Plain Python (or Go / TypeScript) functions. No DSL, no YAML, no graph wiring.*
 
 ```python
 import asyncio
@@ -198,25 +198,25 @@ docker run -p 8080:8080 agentfield/control-plane:latest
 
 ## How AgentField fits in your stack
 
-Most agent tools help you **write** agent logic. AgentField is what **runs** it in production — the operating layer that makes agents callable by software, durable across failures, governed by policy, and provable by audit.
+Most agent tools help you **write** agent logic. AgentField is what **runs** it in production: the layer that makes agents callable by other software, durable across failures, and observable when one request fans out to a thousand branches. Keep the framework you already use for authoring; a reasoner is a plain function, so existing LangGraph or CrewAI code can run inside one.
 
 |  | **Frameworks**<br><sub>LangChain · CrewAI · PydanticAI · OpenAI Agents SDK</sub> | **Workflow engines**<br><sub>Temporal · Airflow</sub> | **Visual builders**<br><sub>n8n · Zapier</sub> | **AgentField** |
 |---|:-:|:-:|:-:|:-:|
 | Build agent logic (prompts, tools, structured output) | ● | — | — | ● |
-| Callable production ready REST APIs out-of-box | — | ◐ | ● | ● |
+| Prebuilt chains, retrievers, integrations | ● | — | ◐ | — |
+| Production REST APIs out of the box | — | ◐ | ● | ● |
 | Async + retries + webhooks | — | ● | ◐ | **●** |
 | Memory scopes (global · agent · session · run) | ◐ | — | — | ● |
 | Service discovery + cross-agent calls | — | — | — | **●** |
-| Distributed agents | — | — | — | **●** |
-| Tamper-proof, verifiable audit per execution | — | — | — | ● |
-| Harness orchestration (Claude Code · Codex · CLI) | — | — | — | **●** |
-| Identity and Access Management (IAM) for agents | — | — | — | ● |
+| Distributed agents (register from anywhere, one mesh) | — | ◐ | — | **●** |
+| Coding agents as functions (Claude Code · Codex · CLI) | — | — | — | **●** |
+| Agent identity, access policies, signed audit trails | — | — | — | ● |
 | Fleet observability (DAGs · metrics · traces) | — | ◐ | — | ● |
 | Multi-language SDKs (Python · Go · TypeScript) | ◐ | ● | — | ● |
 
 <sub>● full · ◐ partial · — not the focus</sub>
 
-**Use a framework when you're proving behavior.** Use AgentField when agents need to be production systems — callable by software, coordinating across services, surviving failures, and governed under audit.
+**Prototype in whatever you like. The moment a second service needs to call your agent, put it on AgentField.** That is the point where you would otherwise start writing queues, retries, discovery, and tracing by hand.
 
 [Full comparison & decision guide →](https://agentfield.ai/docs/learn/vs-frameworks?utm_source=github-readme&utm_campaign=github-readme&utm_id=github-readme-vs-frameworks)
 
@@ -232,7 +232,7 @@ The control plane is a stateless Go service. You put more of them behind a load 
 | Backpressure | Queue-depth limits and circuit breakers keep a fan-out from overwhelming downstream agents. |
 | Routing overhead | Roughly 100-200ms per cross-agent hop. It matters when a branch does little work per hop, so keep hops coarse when latency is tight. |
 
-Two production examples show the shape of this at load. The [deep-research engine](https://agentfield.ai/github/deepresearch/?utm_source=github-readme&utm_campaign=github-readme&utm_id=github-readme-deepresearch-repo) fanned out 10,000+ agent invocations in one workflow. The [security auditor](https://agentfield.ai/github/sec-af/?utm_source=github-readme&utm_campaign=github-readme&utm_id=github-readme-sec-af-repo) runs 250 coordinated agents per audit.
+Two examples already run at this load. The [deep-research engine](https://agentfield.ai/github/deepresearch/?utm_source=github-readme&utm_campaign=github-readme&utm_id=github-readme-deepresearch-repo) fanned out 10,000+ agent invocations in one workflow. The [security auditor](https://agentfield.ai/github/sec-af/?utm_source=github-readme&utm_campaign=github-readme&utm_id=github-readme-sec-af-repo) runs 250 coordinated agents per audit.
 
 [Deployment guide →](https://agentfield.ai/docs/reference/deploy?utm_source=github-readme&utm_campaign=github-readme&utm_id=github-readme-deploy-scale) for Docker Compose, Kubernetes, and production setups.
 
