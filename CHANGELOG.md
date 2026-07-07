@@ -6,6 +6,92 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) 
 
 <!-- changelog:entries -->
 
+## [0.1.102-rc.1] - 2026-07-07
+
+
+### Added
+
+- Feat(sdk-ts): pause/WAITING + async-execution dispatch (parity with Python) — closes #726 (#731)
+
+* feat(sdk-ts): add pause/WAITING + async-execution dispatch (parity with Python)
+
+Ports the control-plane pause/resume mechanism to the TypeScript SDK
+(closes the gap tracked in #726, where it existed only in the Python SDK).
+
+Three layers:
+
+1. Async-execution dispatch (on by default, `asyncExecution` config to opt out):
+   a reasoner dispatched by the control plane (carrying `X-Execution-ID`) is
+   acknowledged immediately with `202 Accepted` and run detached; its terminal
+   status is delivered out-of-band via `POST /executions/{id}/status`. This
+   frees the dispatch connection so a reasoner can wait far longer than the
+   control plane's synchronous dispatch ceiling. A watchdog (pause-aware
+   active-time budget) guarantees a terminal status even if a reasoner hangs.
+
+2. Pause primitive: `ctx.pause()` / `Agent.pause()` transition the execution to
+   WAITING via request-approval and block on a promise resolved by the always-on
+   `POST /webhooks/approval` route when the control plane delivers the decision.
+   Returns an `ApprovalResult`; times out to `{ decision: 'expired' }` rather
+   than throwing. Backed by a PauseManager + PauseClock (new src/agent/pause.ts).
+
+3. Multi-hop propagation: the remote `call()` path now submits async and polls
+   for the result, and when an awaited child enters WAITING it pushes the
+   caller's own execution to WAITING via `notifyAwaiterStatus` — so ancestors
+   don't time out while a descendant legitimately waits.
+
+Co-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>
+
+* test(sdk-ts): cover pause/WAITING, async dispatch, and multi-hop cascade
+
+- pause.test.ts: PauseClock accounting, PauseManager resolve/fallback/cancelAll,
+  ApprovalResult getters, and the /webhooks/approval route.
+- agent_async_execution.test.ts: 202 fast-ack + out-of-band succeeded/failed
+  reporting, non-object result wrapping, sync fallback (no header /
+  asyncExecution:false), and the reasoner_timeout watchdog.
+- agent_pause.test.ts: end-to-end ctx.pause() resume via webhook, expired
+  timeout, request-approval failure, and the awaiter-status multi-hop cascade,
+  all driven through a mock control plane.
+- agentfield_client_async.test.ts: executeAsync / getExecutionStatus /
+  waitForExecutionResult (incl. WAITING-window clock pause) / notifyAwaiterStatus
+  / reportExecutionResult.
+- agent_runtime_paths.test.ts: pin the existing remote-delegation test to the
+  synchronous path (asyncExecution:false); the async default is covered above.
+
+Co-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>
+
+* docs(examples): add ctx.pause() reasoner to the TS waiting-state example
+
+Adds `planWithPause`, which uses the high-level `ctx.pause()` primitive
+alongside the existing low-level ApprovalClient demo, so the example shows both
+the parity API and the manual polling approach.
+
+Co-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>
+
+* fix(sdk-ts): only run async dispatch on async-aware paths (require X-Run-ID)
+
+The functional test `test_ts_agent` invokes the reasoner via the legacy
+synchronous endpoint `POST /api/v1/reasoners/{node}.{reasoner}`, which forwards
+the agent's HTTP response verbatim and cannot handle a 202. With async dispatch
+gated only on `X-Execution-ID`, the agent 202-acked there and the caller got the
+`{status:"processing"}` marker instead of the result.
+
+Gate async dispatch on BOTH `X-Execution-ID` and `X-Run-ID`. `X-Run-ID` is set
+only by the control plane's async-aware `callAgent` path (workflow execute,
+execute/async, agent-to-agent calls, triggers) — all of which wait for the
+out-of-band `/status` result. The legacy sync invoke endpoint omits `X-Run-ID`
+for long-running agents, so the agent now runs synchronously and returns the
+result inline there, while pause/async continues to work on the execute paths.
+
+Verified live: the legacy endpoint returns the inline echo result again, and a
+pause submitted via execute/async still reaches WAITING and resumes to
+succeeded. Adds a regression test for the X-Execution-ID-without-X-Run-ID case.
+
+Co-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>
+
+---------
+
+Co-authored-by: Claude Opus 4.8 (1M context) <noreply@anthropic.com> (1e11e82)
+
 ## [0.1.101] - 2026-07-07
 
 ## [0.1.101-rc.1] - 2026-07-07
