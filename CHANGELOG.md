@@ -6,6 +6,50 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) 
 
 <!-- changelog:entries -->
 
+## [0.1.102-rc.2] - 2026-07-07
+
+
+### Added
+
+- Feat(cli): clean, styled af install output (follow-up to #730) (#732)
+
+* refactor(cli): move ui package to internal/ui
+
+Relocate the shared ui package out of internal/cli so non-cli packages (e.g.
+internal/packages, which prints install progress) can render with the same
+styled primitives without a cli->packages layering inversion. No behaviour
+change; only the import path moves.
+
+Co-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>
+
+* feat(cli): clean, styled af install output
+
+The git install path routed user-facing text through the JSON logger, so the
+terminal showed raw {"level":"info",...\u001b[..m} lines mixed with the
+spinners. Print those directly instead, and render the completion as a bordered
+success panel (name/version + source/location). Two more fixes to the flow:
+
+- Spinner is now TTY-aware: when stdout is piped/captured it no longer emits
+  thousands of animation frames — just the final ✓/✗ line per step.
+- The uv/pyenv 'Provisioned Python' notice clears the active spinner line
+  (terminal only) so it lands on its own line instead of being appended to
+  'Installing dependencies'.
+
+Co-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>
+
+* test(cli): cover install summary rendering and TTY-aware spinner
+
+Extract the post-install source label and success panel into pure
+installSourceLabel / installSummaryPanel helpers so the styled completion is
+unit-tested (the surrounding InstallFromGit needs a real clone). Add spinner
+lifecycle tests for the non-TTY path and a clearLine test.
+
+Co-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>
+
+---------
+
+Co-authored-by: Claude Opus 4.8 (1M context) <noreply@anthropic.com> (2c4d446)
+
 ## [0.1.102-rc.1] - 2026-07-07
 
 
