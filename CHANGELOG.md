@@ -6,6 +6,90 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) 
 
 <!-- changelog:entries -->
 
+## [0.1.107-rc.1] - 2026-07-09
+
+
+### Chores
+
+- Chore(deps): bump golang.org/x/crypto (#728)
+
+Bumps the go_modules group with 1 update in the /control-plane directory: [golang.org/x/crypto](https://github.com/golang/crypto).
+
+
+Updates `golang.org/x/crypto` from 0.51.0 to 0.52.0
+- [Commits](https://github.com/golang/crypto/compare/v0.51.0...v0.52.0)
+
+---
+updated-dependencies:
+- dependency-name: golang.org/x/crypto
+  dependency-version: 0.52.0
+  dependency-type: direct:production
+  dependency-group: go_modules
+...
+
+Signed-off-by: dependabot[bot] <support@github.com>
+Co-authored-by: dependabot[bot] <49699333+dependabot[bot]@users.noreply.github.com>
+Co-authored-by: Abir Abbas <abirabbas1998@gmail.com> (d179bb6)
+
+
+
+### Fixed
+
+- Fix(control-plane): add timestamp freshness checks to prevent webhook replay attacks (#717)
+
+* fix(control-plane): add timestamp freshness checks to prevent webhook replay attacks (#65)
+
+The generic_hmac source and the approval webhook handler accepted any
+timestamp without checking freshness, allowing captured signatures to
+be replayed indefinitely.
+
+Changes:
+- generic_hmac: add optional timestamp_header + tolerance_seconds config
+  (default 300s); reject requests with stale or future timestamps
+- webhook_approval: enforce 5-minute skew window on hax-sdk 't=...'
+  timestamps; reject non-numeric timestamps
+- Add 7 new tests for timestamp freshness (stale, future, missing,
+  invalid format, custom tolerance, zero-disables)
+- Add 2 new tests for approval webhook replay rejection
+
+Note: the original issue also mentioned plaintext secret storage, but
+the codebase has since been refactored to use SecretEnvVar (env var
+names stored, secrets read from environment at request time), so that
+part is already resolved.
+
+Closes #65
+
+* fix: address Copilot review feedback
+
+- Trim whitespace on timestamp header value before parsing
+- Add tolerance_seconds >= 0 validation in Validate() to prevent
+  negative values silently disabling replay protection
+- Clarify hard-coded 5-minute skew in approval webhook as intentional
+  (configurable tolerance is a future enhancement)
+- Add test for negative tolerance_seconds rejection
+
+* fix: bind timestamp into HMAC signature to prevent replay attacks
+
+Address maintainer review feedback: the timestamp was verified for
+freshness but not included in the signed payload, so an attacker could
+rewrite the timestamp header to 'now' and replay the original
+body+signature pair unchanged.
+
+Now when timestamp_header is configured, the HMAC is computed over
+'<timestamp>.<body>' (Stripe-style) instead of bare body. A forged
+fresh timestamp invalidates the signature, making replay impossible.
+
+Also adds:
+- Validate() rejects negative tolerance_seconds
+- Whitespace trimming on timestamp header
+- Test: replay with fresh timestamp is rejected (signature mismatch)
+- Test: backward-compatible body-only signing without timestamp_header
+- Test: whitespace in timestamp header handled correctly
+
+---------
+
+Co-authored-by: Abir Abbas <abirabbas1998@gmail.com> (a507eed)
+
 ## [0.1.106] - 2026-07-09
 
 ## [0.1.106-rc.2] - 2026-07-08
