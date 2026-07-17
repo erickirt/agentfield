@@ -6,6 +6,154 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) 
 
 <!-- changelog:entries -->
 
+## [0.1.110-rc.2] - 2026-07-17
+
+
+### Added
+
+- Feat(control-plane): agent-mode steering verbs, events query resource, and --json lifecycle output (#751)
+
+* feat(control-plane): authenticated approval resolution endpoint by execution ID
+
+Approvals could previously only be resolved through the HMAC-signed
+webhook (POST /api/v1/webhooks/approval-response), whose secret is held
+by the external approval service. Extract the resolution core
+(idempotency, state transitions, approval bookkeeping, events, agent
+callback) into webhookApprovalController.applyApprovalDecision and add
+POST /api/v1/executions/:execution_id/approval-response under the
+authenticated agentAPI group, so operators and CLIs holding an API key
+can approve/reject/request_changes directly. Webhook behavior is
+unchanged; 'expired' stays webhook-only since expiry is not an operator
+decision.
+
+Co-Authored-By: Claude Fable 5 <noreply@anthropic.com>
+
+* feat(control-plane): af agent exec steering verbs in agent-mode CLI
+
+Add 'af agent exec pause|resume|cancel|restart|approval-status|approve'
+as thin wrappers over the existing /api/v1/executions/:execution_id/*
+endpoints, emitting the standard AgentResponse envelope with non-zero
+exit on error. approve wires --decision approved|rejected|
+request_changes [--reason] to the new authenticated approval-response
+endpoint.
+
+proxyToServer now normalizes legacy string errors ({"error":"..."},
+optionally with a sibling message) into the structured envelope error
+object {code,message,hint}, deriving the code from the HTTP status when
+the handler didn't provide one — so agents scripting against 'af agent'
+always get {ok:false,error:{...}} on failures.
+
+Co-Authored-By: Claude Fable 5 <noreply@anthropic.com>
+
+* feat(control-plane): events resource in agentic unified query
+
+Expose persisted execution lifecycle events (workflow_execution_events)
+through POST /api/v1/agentic/query as resource=events so agents can
+poll event history from a shell loop instead of consuming SSE. Queries
+require filters.execution_id (direct per-execution listing) or
+filters.run_id (fan-out over the run's execution records); results are
+sorted by emitted_at ascending with sequence tie-breaking, honor
+since/until RFC3339 bounds, and paginate with limit/offset (total is
+the pre-pagination count). No new persistence layer or storage
+interface methods — this composes the existing QueryExecutionRecords
+and ListWorkflowExecutionEvents queries.
+
+CLI: 'af agent query -r events --execution-id X | --run-id Y' with a
+new --execution-id filter flag; help documents that this is a pollable
+snapshot of the SSE stream, not a live subscription.
+
+Co-Authored-By: Claude Fable 5 <noreply@anthropic.com>
+
+* feat(control-plane): --json envelopes for node lifecycle commands
+
+Add a --json flag to af list, af install, af run, af stop, and af logs
+that emits the agent-mode {ok,data,error:{code,message,hint}} envelope
+on stdout with non-zero exit on error. Default human output is
+unchanged.
+
+- list: {nodes:[{name,version,status,port,description}], total}
+- install/run: envelope on the real stdout; service-layer progress
+  prints are redirected to stderr for the duration
+- stop: {node, status: stopped|not_running}; progress output is
+  suppressed via a Quiet flag on AgentNodeStopper (printf wrapper only,
+  no changes to the signal/liveness logic)
+- logs: {node, log_path, lines:[...]} honoring --tail via a Go-native
+  tail (no external tail binary); --follow with --json is rejected as
+  invalid_flags since a stream cannot be a JSON snapshot
+
+Co-Authored-By: Claude Fable 5 <noreply@anthropic.com>
+
+* fix(control-plane): persist recorded_at on workflow execution events
+
+The raw INSERT in storeWorkflowExecutionEventTx omitted recorded_at
+(the GORM model's autoCreateTime does not apply to raw SQL), leaving
+NULL in SQLite/Postgres. ListWorkflowExecutionEvents scanned the column
+into a non-nullable time.Time, so listing any stored event failed with
+'unsupported Scan, storing driver.Value type <nil>'. Nothing exercised
+this listing path end-to-end until the agentic events query resource;
+the existing storage test masked the bug with a manual UPDATE of
+recorded_at before listing.
+
+Write recorded_at in the INSERT and scan it through sql.NullTime,
+falling back to emitted_at for legacy NULL rows so old databases keep
+listing cleanly. Found via runtime verification of
+'af agent query -r events' against a local control plane.
+
+Co-Authored-By: Claude Fable 5 <noreply@anthropic.com>
+
+* test(control-plane): in-process unit tests for proxy error normalization
+
+structuredErrorFromString and defaultCodeForStatus were exercised only
+through subprocess exit-path tests, which record no coverage. Add
+direct table-driven tests so the patch-coverage gate sees these lines.
+
+Co-Authored-By: Claude Fable 5 <noreply@anthropic.com>
+
+* feat(control-plane): list approval-response endpoint in discover catalog
+
+Register POST /api/v1/executions/:execution_id/approval-response in the
+agentic API catalog so 'af agent discover' surfaces the new resolution
+endpoint alongside the other approval routes.
+
+Co-Authored-By: Claude Fable 5 <noreply@anthropic.com>
+
+* fix(storage): persist recorded_at on the execution_logs raw INSERT too
+
+storeExecutionLogEntryTx — the single writer behind both
+StoreExecutionLogEntry and StoreExecutionLogEntries — omitted recorded_at
+from its raw INSERT, so every execution-log row landed NULL and every read
+silently took the legacy emitted_at fallback: the server-ingestion timestamp
+was never actually stored. It also stamped entry.RecordedAt only AFTER the
+insert, mutating the caller's struct with a value that never reached the
+database. This is the same bug this branch already fixed for
+workflow_execution_events (the GORM model's autoCreateTime does not apply to
+raw INSERTs); the sibling path was missed.
+
+The default is now stamped before the query is built and recorded_at is
+bound explicitly, mirroring storeWorkflowExecutionEventTx. The regression
+test uses distinct emitted_at/recorded_at values so the NULL-read fallback
+cannot masquerade as persistence, and covers the batch path's zero-value
+stamping; it fails against the previous INSERT.
+
+Co-Authored-By: Claude Fable 5 <noreply@anthropic.com>
+
+* test(storage): align clinch execution-log test with persisted recorded_at
+
+The recorded_at-persistence fix (raw INSERT no longer leaves the column
+NULL) made the legacy assertion here fail: it expected the NULL-read
+fallback (recorded_at -> emitted_at) for a freshly stored entry. Give
+the entry an explicit RecordedAt and assert it round-trips; the NULL
+fallback branch is still covered by the forced-NULL UPDATE above.
+
+Latent in the branch before the main merge - conflict state had kept
+full CI from running on the previous head.
+
+Co-Authored-By: Claude Fable 5 <noreply@anthropic.com>
+
+---------
+
+Co-authored-by: Claude Fable 5 <noreply@anthropic.com> (cf29386)
+
 ## [0.1.110-rc.1] - 2026-07-16
 
 
