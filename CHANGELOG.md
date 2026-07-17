@@ -6,6 +6,32 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) 
 
 <!-- changelog:entries -->
 
+## [0.1.110-rc.3] - 2026-07-17
+
+
+### Chores
+
+- Chore(deps): bump mcp in /sdk/python in the uv group across 1 directory (#785)
+
+Bumps the uv group with 1 update in the /sdk/python directory: [mcp](https://github.com/modelcontextprotocol/python-sdk).
+
+
+Updates `mcp` from 1.27.0 to 1.28.1
+- [Release notes](https://github.com/modelcontextprotocol/python-sdk/releases)
+- [Changelog](https://github.com/modelcontextprotocol/python-sdk/blob/main/RELEASE.md)
+- [Commits](https://github.com/modelcontextprotocol/python-sdk/compare/v1.27.0...v1.28.1)
+
+---
+updated-dependencies:
+- dependency-name: mcp
+  dependency-version: 1.28.1
+  dependency-type: indirect
+  dependency-group: uv
+...
+
+Signed-off-by: dependabot[bot] <support@github.com>
+Co-authored-by: dependabot[bot] <49699333+dependabot[bot]@users.noreply.github.com> (75e942a)
+
 ## [0.1.110-rc.2] - 2026-07-17
 
 
