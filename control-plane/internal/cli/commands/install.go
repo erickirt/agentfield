@@ -36,6 +36,7 @@ func (cmd *InstallCommand) GetDescription() string {
 func (cmd *InstallCommand) BuildCobraCommand() *cobra.Command {
 	var force bool
 	var verbose bool
+	var jsonOutput bool
 	var path string
 
 	cobraCmd := &cobra.Command{
@@ -65,6 +66,9 @@ Examples:
   agentfield install agent-name`,
 		Args: cobra.ExactArgs(1),
 		RunE: func(cobraCmd *cobra.Command, args []string) error {
+			if jsonOutput {
+				return cmd.executeJSON(args[0], force, path)
+			}
 			// Update output formatter with verbose setting
 			cmd.output.SetVerbose(verbose)
 			return cmd.execute(args[0], force, verbose, path)
@@ -73,9 +77,28 @@ Examples:
 
 	cobraCmd.Flags().BoolVarP(&force, "force", "f", false, "Force reinstall if package exists")
 	cobraCmd.Flags().BoolVarP(&verbose, "verbose", "v", false, "Verbose output")
+	cobraCmd.Flags().BoolVar(&jsonOutput, "json", false, "Emit a machine-readable JSON envelope (diagnostics go to stderr)")
 	cobraCmd.Flags().StringVar(&path, "path", "", "Install the package from this subdirectory of the source (relative to its root)")
 
 	return cobraCmd
+}
+
+// executeJSON installs the package and emits a JSON envelope on stdout.
+// Service-layer progress output is redirected to stderr for the duration.
+func (cmd *InstallCommand) executeJSON(packagePath string, force bool, path string) error {
+	stdout, restore := redirectStdoutToStderr()
+	defer restore()
+
+	options := domain.InstallOptions{Force: force, Path: path}
+	if err := cmd.Services.PackageService.InstallPackage(packagePath, options); err != nil {
+		printJSONError(stdout, "install_failed", err.Error(), "Check the package source (path, git URL, or registry name); use --force to reinstall.")
+		return err
+	}
+
+	return printJSONSuccess(stdout, map[string]interface{}{
+		"source": packagePath,
+		"status": "installed",
+	})
 }
 
 // execute performs the actual installation

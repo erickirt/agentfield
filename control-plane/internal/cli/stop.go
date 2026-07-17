@@ -16,6 +16,8 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
+var stopJSON bool
+
 // NewStopCommand creates the stop command
 func NewStopCommand() *cobra.Command {
 	cmd := &cobra.Command{
@@ -28,11 +30,13 @@ will be updated in the registry.
 
 Examples:
   af stop email-helper
-  af stop data-analyzer`,
+  af stop data-analyzer
+  af stop email-helper --json`,
 		Args: cobra.ExactArgs(1),
 		RunE: runStopCommand,
 	}
 
+	cmd.Flags().BoolVar(&stopJSON, "json", false, "Emit a machine-readable JSON envelope instead of progress output")
 	return cmd
 }
 
@@ -41,18 +45,41 @@ func runStopCommand(cmd *cobra.Command, args []string) error {
 
 	stopper := &AgentNodeStopper{
 		AgentFieldHome: getAgentFieldHomeDir(),
+		Quiet:          stopJSON,
 	}
 
 	if err := stopper.StopAgentNode(agentNodeName); err != nil {
+		if stopJSON {
+			return nodeJSONError("stop_failed", err.Error(), "Run 'af list --json' to see installed nodes and their status.")
+		}
 		return fmt.Errorf("failed to stop agent node: %w", err)
 	}
 
+	if stopJSON {
+		return nodeJSONSuccess(map[string]interface{}{
+			"node":   agentNodeName,
+			"status": stopper.Outcome,
+		})
+	}
 	return nil
 }
 
 // AgentNodeStopper handles stopping agent nodes
 type AgentNodeStopper struct {
 	AgentFieldHome string
+	// Quiet suppresses human progress output (used by --json mode).
+	Quiet bool
+	// Outcome records the result of the last StopAgentNode call:
+	// "stopped" or "not_running".
+	Outcome string
+}
+
+// printf writes human progress output unless the stopper is in quiet mode.
+func (as *AgentNodeStopper) printf(format string, args ...interface{}) {
+	if as.Quiet {
+		return
+	}
+	fmt.Printf(format, args...)
 }
 
 // StopAgentNode stops a running agent node
@@ -69,16 +96,17 @@ func (as *AgentNodeStopper) StopAgentNode(agentNodeName string) error {
 	}
 
 	if agentNode.Status != "running" {
-		fmt.Printf("⚠️  Agent node %s is not running\n", agentNodeName)
+		as.Outcome = "not_running"
+		as.printf("⚠️  Agent node %s is not running\n", agentNodeName)
 		return nil
 	}
 
 	if agentNode.Runtime.PID == nil {
-		fmt.Printf("⚠️  Agent node %s has no recorded PID — clearing stale registry entry\n", agentNodeName)
+		as.printf("⚠️  Agent node %s has no recorded PID — clearing stale registry entry\n", agentNodeName)
 		return as.markStopped(registry, agentNodeName, agentNode)
 	}
 
-	fmt.Printf("🛑 Stopping agent node: %s (PID: %d)\n", agentNodeName, *agentNode.Runtime.PID)
+	as.printf("🛑 Stopping agent node: %s (PID: %d)\n", agentNodeName, *agentNode.Runtime.PID)
 
 	// A "running" registry entry is a claim, not a fact: after a reboot or a
 	// crash the PID is gone — or reassigned to an unrelated process — and the
@@ -87,7 +115,7 @@ func (as *AgentNodeStopper) StopAgentNode(agentNodeName string) error {
 	// flows (desktop restart, login autostart) recover on their own.
 	process, err := os.FindProcess(*agentNode.Runtime.PID)
 	if err != nil || !isProcessAlive(process) {
-		fmt.Printf("⚠️  Process %d is not running anymore — clearing stale registry entry\n", *agentNode.Runtime.PID)
+		as.printf("⚠️  Process %d is not running anymore — clearing stale registry entry\n", *agentNode.Runtime.PID)
 		return as.markStopped(registry, agentNodeName, agentNode)
 	}
 
@@ -96,7 +124,7 @@ func (as *AgentNodeStopper) StopAgentNode(agentNodeName string) error {
 	// someone else — never signal a process we cannot identify as ours.
 	if agentNode.Runtime.Port != nil {
 		if id := probeHealthNodeID(*agentNode.Runtime.Port); id != "" && !packages.NodeIDsEquivalent(id, agentNodeName) {
-			fmt.Printf("⚠️  Port %d belongs to node %q, not %s — clearing stale registry entry without signalling PID %d\n",
+			as.printf("⚠️  Port %d belongs to node %q, not %s — clearing stale registry entry without signalling PID %d\n",
 				*agentNode.Runtime.Port, id, agentNodeName, *agentNode.Runtime.PID)
 			return as.markStopped(registry, agentNodeName, agentNode)
 		}
@@ -105,7 +133,7 @@ func (as *AgentNodeStopper) StopAgentNode(agentNodeName string) error {
 	// Try HTTP shutdown first if port is available
 	httpShutdownSuccess := false
 	if agentNode.Runtime.Port != nil {
-		fmt.Printf("🛑 Attempting graceful HTTP shutdown for agent %s on port %d\n", agentNodeName, *agentNode.Runtime.Port)
+		as.printf("🛑 Attempting graceful HTTP shutdown for agent %s on port %d\n", agentNodeName, *agentNode.Runtime.Port)
 
 		// Construct agent base URL
 		baseURL := fmt.Sprintf("http://localhost:%d", *agentNode.Runtime.Port)
@@ -129,16 +157,16 @@ func (as *AgentNodeStopper) StopAgentNode(agentNodeName string) error {
 				if err == nil {
 					defer resp.Body.Close()
 					if resp.StatusCode == 200 {
-						fmt.Printf("✅ HTTP shutdown request accepted for agent %s\n", agentNodeName)
+						as.printf("✅ HTTP shutdown request accepted for agent %s\n", agentNodeName)
 						httpShutdownSuccess = true
 
 						// Wait a moment for graceful shutdown
 						time.Sleep(3 * time.Second)
 					} else {
-						fmt.Printf("⚠️ HTTP shutdown returned status %d for agent %s\n", resp.StatusCode, agentNodeName)
+						as.printf("⚠️ HTTP shutdown returned status %d for agent %s\n", resp.StatusCode, agentNodeName)
 					}
 				} else {
-					fmt.Printf("⚠️ HTTP shutdown request failed for agent %s: %v\n", agentNodeName, err)
+					as.printf("⚠️ HTTP shutdown request failed for agent %s: %v\n", agentNodeName, err)
 				}
 			}
 		}
@@ -146,7 +174,7 @@ func (as *AgentNodeStopper) StopAgentNode(agentNodeName string) error {
 
 	// If HTTP shutdown failed or not available, fall back to process signals
 	if !httpShutdownSuccess {
-		fmt.Printf("🔄 Falling back to process signal shutdown for agent %s\n", agentNodeName)
+		as.printf("🔄 Falling back to process signal shutdown for agent %s\n", agentNodeName)
 
 		// Ask for graceful shutdown (SIGINT on Unix, taskkill on Windows).
 		// A process that exits between the aliveness check above and the
@@ -163,7 +191,7 @@ func (as *AgentNodeStopper) StopAgentNode(agentNodeName string) error {
 			// Check if process is still running
 			if isProcessAlive(process) {
 				// Process still running, force kill
-				fmt.Printf("⚠️ Process still running, force killing agent %s\n", agentNodeName)
+				as.printf("⚠️ Process still running, force killing agent %s\n", agentNodeName)
 				if err := process.Kill(); err != nil && !errors.Is(err, os.ErrProcessDone) {
 					return fmt.Errorf("failed to force kill process: %w", err)
 				}
@@ -188,7 +216,8 @@ func (as *AgentNodeStopper) markStopped(registry *packages.InstallationRegistry,
 		return fmt.Errorf("failed to update registry: %w", err)
 	}
 
-	fmt.Printf("✅ Agent node %s stopped successfully\n", name)
+	as.Outcome = "stopped"
+	as.printf("✅ Agent node %s stopped successfully\n", name)
 	return nil
 }
 
