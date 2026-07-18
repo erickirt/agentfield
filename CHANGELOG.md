@@ -6,6 +6,22 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) 
 
 <!-- changelog:entries -->
 
+## [0.1.110] - 2026-07-18
+
+
+### Fixed
+
+- Fix(install): replace binaries atomically to avoid macOS SIGKILL on upgrade (#797)
+
+cp onto an existing binary reuses the inode, which poisons the macOS
+kernel's cached code-signature state for that vnode. Every exec after an
+upgrade is then killed with SIGKILL ("zsh: killed af") even though
+codesign --verify passes on disk. Stage to a temp file and mv into place
+so upgrades always land on a fresh inode. Applies to both the agentfield
+binary and the af-tray binary.
+
+Co-authored-by: Claude Fable 5 <noreply@anthropic.com> (1a55ddc)
+
 ## [0.1.110-rc.5] - 2026-07-18
 
 
