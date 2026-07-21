@@ -6,6 +6,15 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) 
 
 <!-- changelog:entries -->
 
+## [0.1.112-rc.3] - 2026-07-21
+
+
+### Fixed
+
+- Fix: prevent exception details in agent server responses (#800)
+
+Co-authored-by: Abir Abbas <abirabbas1998@gmail.com> (26c8428)
+
 ## [0.1.112-rc.2] - 2026-07-21
 
 
