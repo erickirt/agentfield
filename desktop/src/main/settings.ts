@@ -8,13 +8,16 @@ import type { DesktopSettings } from '../shared/types'
 
 export const DEFAULT_SETTINGS: DesktopSettings = {
   openAtLogin: false,
+  appearance: 'system',
   autostartControlPlane: true,
   controlPlanePort: null,
   lastControlPlanePort: null,
   autostartAgents: [],
   installSkills: true,
   trayCompanion: true,
-  dismissedUpdateVersion: null
+  dismissedUpdateVersion: null,
+  starPrompt: 'pending',
+  starPromptSnoozedUntil: null
 }
 
 /** A usable TCP port, or null for anything else (auto mode / not recorded). */
@@ -37,6 +40,10 @@ export function normalizeSettings(raw: unknown): DesktopSettings {
   return {
     openAtLogin:
       typeof obj.openAtLogin === 'boolean' ? obj.openAtLogin : DEFAULT_SETTINGS.openAtLogin,
+    appearance:
+      obj.appearance === 'light' || obj.appearance === 'dark' || obj.appearance === 'system'
+        ? obj.appearance
+        : DEFAULT_SETTINGS.appearance,
     autostartControlPlane:
       typeof obj.autostartControlPlane === 'boolean'
         ? obj.autostartControlPlane
@@ -51,6 +58,13 @@ export function normalizeSettings(raw: unknown): DesktopSettings {
     dismissedUpdateVersion:
       typeof obj.dismissedUpdateVersion === 'string' && obj.dismissedUpdateVersion !== ''
         ? obj.dismissedUpdateVersion
+        : null,
+    starPrompt: obj.starPrompt === 'done' || obj.starPrompt === 'pending' ? obj.starPrompt : 'pending',
+    starPromptSnoozedUntil:
+      typeof obj.starPromptSnoozedUntil === 'string' &&
+      obj.starPromptSnoozedUntil !== '' &&
+      Number.isFinite(Date.parse(obj.starPromptSnoozedUntil))
+        ? obj.starPromptSnoozedUntil
         : null
   }
 }

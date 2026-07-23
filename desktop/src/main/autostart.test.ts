@@ -23,6 +23,7 @@ function agent(name: string, badge: SnapshotAgent['badge']): SnapshotAgent {
 function settings(overrides: Partial<DesktopSettings>): DesktopSettings {
   return {
     openAtLogin: false,
+    appearance: 'system',
     autostartControlPlane: true,
     controlPlanePort: null,
     lastControlPlanePort: null,
@@ -30,6 +31,8 @@ function settings(overrides: Partial<DesktopSettings>): DesktopSettings {
     installSkills: true,
     trayCompanion: true,
     dismissedUpdateVersion: null,
+    starPrompt: 'pending',
+    starPromptSnoozedUntil: null,
     ...overrides
   }
 }
