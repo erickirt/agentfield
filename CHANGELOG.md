@@ -6,6 +6,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) 
 
 <!-- changelog:entries -->
 
+## [0.1.115-rc.2] - 2026-07-23
+
+
+### Other
+
+- Improve anonymous OSS telemetry (#823) (809fb86)
+
 ## [0.1.115-rc.1] - 2026-07-23
 
 
